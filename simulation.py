@@ -99,7 +99,7 @@ class Simulation:
                 organism.eating = True
                 organism.food_eaten += 1
                 organism.lifetime += (20 / organism.food_eaten)
-                organism.reproductivity += (2 / organism.food_eaten)
+                organism.endurance += (1 / organism.food_eaten)
                 if organism.food_eaten % 5 == 0:
                     organism.bounds.inflate_ip(2, 2)
                 self.vegetation.remove(plant)

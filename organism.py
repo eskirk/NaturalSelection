@@ -23,7 +23,6 @@ class Organism:
         self.endurance = 0
         self.sociability = 0
         self.survivability = 0
-        self.reproductivity = 0
         self.sex = None
         # stats
         self.food_eaten = 0
@@ -131,7 +130,7 @@ class Organism:
             self.die(population)
         elif not self.fertile and self.lifetime <= self.age / 4 <= self.lifetime / 3:
             self.fertile = True
-        elif not self.fertile and time.time() - self.reproduced >= self.lifetime / (self.reproductivity * 5):
+        elif not self.fertile and time.time() - self.reproduced >= self.lifetime / ((self.endurance / 50) * 5):
             self.fertile = True
 
         if self.pregnant:
@@ -164,7 +163,6 @@ class Organism:
 
         self.sociability = random.uniform(0, 1)
         self.survivability = 1 - self.sociability
-        self.reproductivity = random.uniform(0, 1)
         self.sex = random.choice(['M', 'F'])
         self.speed = (speed / total) * 100
         self.strength = (strength / total) * 100
@@ -185,7 +183,7 @@ class Organism:
 
     def decide(self):
         if self.target is None or time.time() - self.focus_time > self.focus:
-            if self.fertile and not self.pregnant and random.uniform(0, 20) < self.reproductivity:
+            if self.fertile and not self.pregnant and random.uniform(0, 50) < self.endurance:
                 self.find_mate()
             elif len(self.plant_perceptions) > 1 and random.uniform(0, 5) < self.survivability:
                 self.find_food()
@@ -238,7 +236,7 @@ class Organism:
             if self.sex == 'F' and not self.pregnant and self.target.fertile:
                 self.reproducing = False
                 self.reproduced = time.time()
-                if self.target.fertile and random.uniform(0, 100) < 10:
+                if self.target.fertile and random.uniform(0, 100) < self.endurance:
                     self.pregnant = True
                     self.fitness += 1
                     self.target.fitness += 1
@@ -247,7 +245,7 @@ class Organism:
             elif self.sex == 'M' and self.target.fertile:
                 self.reproducing = False
                 self.reproduced = time.time()
-                if self.target.fertile and random.uniform(0, 100) < 10:
+                if self.target.fertile and random.uniform(0, 100) < self.endurance:
                     self.target.pregnant = True
                     self.target.fertile = False
                     self.fitness += 1
@@ -278,7 +276,6 @@ class Organism:
         child.lifetime = (self.strength + self.endurance) * 3
         child.sociability = (self.sociability + mate.sociability) / 2
         child.survivability = (self.survivability + mate.survivability) / 2
-        child.reproductivity = (self.reproductivity + mate.reproductivity) / 2
         child.parents = [self, mate]
         child.generation = max(self.generation, mate.generation) + 1
         self.baby = child
@@ -296,7 +293,7 @@ class Organism:
         self.foraging = False
         if len(self.organism_perceptions) > 0 and random.uniform(0, 5) < self.sociability:
             self.target = random.choice(self.organism_perceptions)
-        elif len(self.organism_perceptions) > 0 and self.fertile and random.uniform(0, 50) < self.reproductivity:
+        elif len(self.organism_perceptions) > 0 and self.fertile and random.uniform(0, 5) < (self.endurance / 50):
             self.find_mate()
         else:
             self.target = None
