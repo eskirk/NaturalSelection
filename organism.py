@@ -21,6 +21,9 @@ class Organism:
         self.focus = 0
         self.perception = 0
         self.endurance = 0
+        self.sociability = 0
+        self.survivability = 0
+        self.reproductivity = 0
         self.sex = None
         # stats
         self.food_eaten = 0
@@ -39,7 +42,7 @@ class Organism:
         self.eating = False
         self.target = None
         self.mouth = 0
-        self.reproduced = 100
+        self.reproduced = time.time()
         # perceptions
         self.plant_perceptions = []
         self.organism_perceptions = []
@@ -47,7 +50,8 @@ class Organism:
     def __repr__(self):
         return '\nSpeed: ' + str(self.speed) + '\nStrength: ' + str(self.strength) + \
                '\nFocus: ' + str(self.focus) + '\nPerception: ' + str(self.perception) + \
-               '\nEndurance: ' + str(self.endurance) + '\nSex: ' + str(self.sex) + \
+               '\nEndurance: ' + str(self.endurance) + '\nSurvivability: ' + str(self.survivability) + \
+               '\nSociability: ' + str(self.sociability) + '\nSex: ' + str(self.sex) + \
                '\nPlants Eaten: ' + str(self.food_eaten) + '\nPregnant: ' + str(self.pregnant) + \
                '\nHerding: ' + str(self.herding) + '\nReproducing: ' + str(self.reproducing) + \
                '\nForaging: ' + str(self.foraging) + '\nAge: ' + str(self.age) + \
@@ -87,18 +91,32 @@ class Organism:
                 self.bounds = self.bounds.move((delta_x, delta_y))
 
     def move_towards_target(self):
-        if self.bounds.x <= self.target.bounds.x:
+        if self.bounds.x < self.target.bounds.x:
             delta_x = random.uniform(self.speed / 10, self.speed / 2)
-            if self.bounds.y <= self.target.bounds.y:
+            if self.bounds.y < self.target.bounds.y:
                 delta_y = random.uniform(self.speed / 10, self.speed / 2)
-            else:
+            elif self.bounds.y > self.target.bounds.y:
                 delta_y = random.uniform(-self.speed / 2, -self.speed / 10)
-        else:
+            else:
+                delta_y = 0
+        elif self.bounds.x > self.target.bounds.x:
             delta_x = random.uniform(-self.speed / 2, -self.speed / 10)
-            if self.bounds.y <= self.target.bounds.y:
+            if self.bounds.y < self.target.bounds.y:
                 delta_y = random.uniform(self.speed / 10, self.speed / 2)
-            else:
+            elif self.bounds.y > self.target.bounds.y:
                 delta_y = random.uniform(-self.speed / 2, -self.speed / 10)
+            else:
+                delta_y = 0
+        elif self.bounds.x == self.target.bounds.x and self.bounds.y == self.target.bounds.y:
+            delta_x, delta_y = self.move_randomly()
+        else:
+            delta_x = 0
+            if self.bounds.y < self.target.bounds.y:
+                delta_y = random.uniform(self.speed / 10, self.speed / 2)
+            elif self.bounds.y > self.target.bounds.y:
+                delta_y = random.uniform(-self.speed / 2, -self.speed / 10)
+            else:
+                delta_y = 0
         return delta_x, delta_y
 
     def move_randomly(self):
@@ -111,13 +129,16 @@ class Organism:
 
         if self.age > self.lifetime:
             self.die(population)
-        elif not self.fertile and self.age >= self.lifetime / 4:
+        elif not self.fertile and self.lifetime <= self.age / 4 <= self.lifetime / 3:
+            self.fertile = True
+        elif not self.fertile and time.time() - self.reproduced >= self.lifetime / (self.reproductivity * 5):
             self.fertile = True
 
         if self.pregnant:
             if time.time() - self.time_pregnant > self.lifetime / 10:
                 self.baby.bounds.x, self.baby.bounds.y = self.bounds.x, self.bounds.y
                 population.append(self.baby)
+                print('Birth, population: ', len(population))
                 self.fertile = False
                 self.pregnant = False
                 self.baby = None
@@ -131,6 +152,7 @@ class Organism:
             self.bounds.height -= 1
         elif self.bounds.width == 0:
             population.remove(self)
+            print('Death, population: ', len(population))
 
     def randomize(self):
         speed = random.uniform(0, 1)
@@ -140,6 +162,9 @@ class Organism:
         endurance = random.uniform(0, 1)
         total = speed + strength + perception + focus + endurance
 
+        self.sociability = random.uniform(0, 1)
+        self.survivability = 1 - self.sociability
+        self.reproductivity = random.uniform(0, 1)
         self.sex = random.choice(['M', 'F'])
         self.speed = (speed / total) * 100
         self.strength = (strength / total) * 100
@@ -160,17 +185,19 @@ class Organism:
 
     def decide(self):
         if self.target is None or time.time() - self.focus_time > self.focus:
-            if self.fertile and not self.pregnant and random.uniform(0, 100) < 1:
+            if self.fertile and not self.pregnant and random.uniform(0, 20) < self.reproductivity:
                 self.find_mate()
-            elif len(self.plant_perceptions) > 1:
+            elif len(self.plant_perceptions) > 1 and random.uniform(0, 5) < self.survivability:
                 self.find_food()
-            elif len(self.organism_perceptions) > 1:
+            elif len(self.organism_perceptions) > 1 and random.uniform(0, 5) < self.sociability:
                 self.find_herd()
+            else:
+                self.target = None
 
     def act(self):
         if self.herding:
             self.herd()
-        elif self.reproducing:
+        elif self.reproducing and self.fertile:
             self.mate()
         elif self.foraging:
             pass
@@ -206,10 +233,10 @@ class Organism:
             self.reproducing = False
 
     def mate(self):
-        if self.target is not None and self.bounds.colliderect(self.target.bounds):
-            if self.sex == 'F' and not self.pregnant:
+        if self.target is not None and self.target and self.bounds.colliderect(self.target.bounds):
+            self.fertile = False
+            if self.sex == 'F' and not self.pregnant and self.target.fertile:
                 self.reproducing = False
-                self.fertile = False
                 self.reproduced = time.time()
                 if self.target.fertile and random.uniform(0, 100) < 10:
                     self.pregnant = True
@@ -217,9 +244,8 @@ class Organism:
                     self.target.fitness += 1
                     self.make_baby(self.target)
                 self.target = None
-            elif self.sex == 'M':
+            elif self.sex == 'M' and self.target.fertile:
                 self.reproducing = False
-                self.fertile = False
                 self.reproduced = time.time()
                 if self.target.fertile and random.uniform(0, 100) < 10:
                     self.target.pregnant = True
@@ -250,6 +276,9 @@ class Organism:
         child.perception = (perception / total) * 100
         child.endurance = (endurance / total) * 100
         child.lifetime = (self.strength + self.endurance) * 3
+        child.sociability = (self.sociability + mate.sociability) / 2
+        child.survivability = (self.survivability + mate.survivability) / 2
+        child.reproductivity = (self.reproductivity + mate.reproductivity) / 2
         child.parents = [self, mate]
         child.generation = max(self.generation, mate.generation) + 1
         self.baby = child
@@ -265,8 +294,10 @@ class Organism:
         self.herding = True
         self.reproducing = False
         self.foraging = False
-        if len(self.organism_perceptions) > 0 and random.uniform(0, 10) < 0.5:
+        if len(self.organism_perceptions) > 0 and random.uniform(0, 5) < self.sociability:
             self.target = random.choice(self.organism_perceptions)
+        elif len(self.organism_perceptions) > 0 and self.fertile and random.uniform(0, 50) < self.reproductivity:
+            self.find_mate()
         else:
             self.target = None
 
