@@ -130,7 +130,7 @@ class Organism:
             self.die(population)
         elif not self.fertile and self.lifetime <= self.age / 4 <= self.lifetime / 3:
             self.fertile = True
-        elif not self.fertile and time.time() - self.reproduced >= self.lifetime / ((self.endurance / 50) * 5):
+        elif not self.fertile and time.time() - self.reproduced > self.lifetime / (((100 - self.endurance) / 100) * 10):
             self.fertile = True
 
         if self.pregnant:
@@ -169,7 +169,7 @@ class Organism:
         self.focus = (focus / total) * 100
         self.perception = (perception / total) * 100
         self.endurance = (endurance / total) * 100
-        self.lifetime = (self.strength + self.endurance) * 3
+        self.lifetime = (self.strength + self.endurance) * 4
 
     def perceive(self, population):
         self.plant_perceptions = []
@@ -236,7 +236,7 @@ class Organism:
             if self.sex == 'F' and not self.pregnant and self.target.fertile:
                 self.reproducing = False
                 self.reproduced = time.time()
-                if self.target.fertile and random.uniform(0, 100) < self.endurance:
+                if self.target.fertile and random.uniform(0, 50) < self.endurance:
                     self.pregnant = True
                     self.fitness += 1
                     self.target.fitness += 1
@@ -245,7 +245,7 @@ class Organism:
             elif self.sex == 'M' and self.target.fertile:
                 self.reproducing = False
                 self.reproduced = time.time()
-                if self.target.fertile and random.uniform(0, 100) < self.endurance:
+                if self.target.fertile and random.uniform(0, 50) < self.endurance:
                     self.target.pregnant = True
                     self.target.fertile = False
                     self.fitness += 1
