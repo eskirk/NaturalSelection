@@ -15,7 +15,7 @@ class Simulation:
         self.population = []
         self.vegetation = []
         self.vegetation_rate = 30
-        self.population_size = 30
+        self.population_size = 50
         self.timer = 0
         self.paused = False
 
@@ -41,6 +41,10 @@ class Simulation:
                     result = self.get_organism(pos)
                     if result is not None:
                         print(result)
+                    else:
+                        new_organism = Organism(pos[0], pos[1])
+                        new_organism.randomize()
+                        self.population.append(new_organism)
                 elif keys[pygame.K_SPACE]:
                     self.paused = not self.paused
 
@@ -92,6 +96,7 @@ class Simulation:
     def eat_plant(self, plant):
         for organism in self.population:
             if organism.bounds.colliderect(plant.bounds):
+                organism.eating = True
                 organism.food_eaten += 1
                 organism.lifetime += (20 / organism.food_eaten)
                 if organism.food_eaten % 5 == 0:

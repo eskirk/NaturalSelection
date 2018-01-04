@@ -5,12 +5,16 @@ import time
 
 
 class Organism:
-    def __init__(self):
-        self.bounds = pygame.Rect(random.uniform(20, 780), random.uniform(20, 780), 15, 15)
+    def __init__(self, x_pos=None, y_pos=None):
+        if x_pos is not None and y_pos is not None:
+            self.bounds = pygame.Rect(x_pos, y_pos, 15, 15)
+        else:
+            self.bounds = pygame.Rect(random.uniform(20, 780), random.uniform(20, 780), 15, 15)
         self.color = (random.uniform(0, 255), random.uniform(0, 255), random.uniform(0, 255))
         self.birth = time.time()
         self.age = 0
         self.name = 'Organism ' + str(self.color)
+        self.parents = None
         # attributes
         self.speed = 0
         self.strength = 0
@@ -22,13 +26,19 @@ class Organism:
         self.food_eaten = 0
         self.lifetime = 0
         self.focus_time = 0
+        self.fitness = 0
+        self.generation = 0
         # status
         self.foraging = False
         self.reproducing = False
         self.herding = False
         self.fertile = False
         self.pregnant = False
+        self.baby = None
+        self.time_pregnant = 0
+        self.eating = False
         self.target = None
+        self.mouth = 0
         self.reproduced = 100
         # perceptions
         self.plant_perceptions = []
@@ -38,11 +48,11 @@ class Organism:
         return '\nSpeed: ' + str(self.speed) + '\nStrength: ' + str(self.strength) + \
                '\nFocus: ' + str(self.focus) + '\nPerception: ' + str(self.perception) + \
                '\nEndurance: ' + str(self.endurance) + '\nSex: ' + str(self.sex) + \
-               '\nPlants Eaten: ' + str(self.food_eaten) + '\nFertile: ' + str(self.fertile) + \
+               '\nPlants Eaten: ' + str(self.food_eaten) + '\nPregnant: ' + str(self.pregnant) + \
                '\nHerding: ' + str(self.herding) + '\nReproducing: ' + str(self.reproducing) + \
                '\nForaging: ' + str(self.foraging) + '\nAge: ' + str(self.age) + \
                '\nLifetime: ' + str(self.lifetime) + '\nPerceptions: ' + str(self.plant_perceptions) + \
-               '\nTarget: ' + str(self.target.__class__)
+               '\nTarget: ' + str(self.target.__class__) + '\nGeneration: ' + str(self.generation)
 
     def draw(self, display):
         pygame.draw.rect(display, self.color, self.bounds)
@@ -50,6 +60,20 @@ class Organism:
         pygame.draw.circle(display, (255, 255, 255), (self.bounds.x + self.bounds.width - 4, self.bounds.y + 5), 3)
         pygame.draw.circle(display, (0, 0, 0), (self.bounds.x + self.bounds.width / 4, self.bounds.y + 5), 1)
         pygame.draw.circle(display, (0, 0, 0), (self.bounds.x + self.bounds.width - 4, self.bounds.y + 5), 1)
+
+        if not self.eating:
+            pygame.draw.line(display, (255, 255, 255), (self.bounds.x + 3, self.bounds.y + self.bounds.height - 4),
+                             (self.bounds.x + self.bounds.width - 3, self.bounds.y + self.bounds.height - 4), 1)
+        else:
+            pygame.draw.line(display, (255, 255, 255), (self.bounds.x + 3, self.bounds.y + self.bounds.height - 4),
+                             (self.bounds.x + self.bounds.width - 3, self.bounds.y + self.bounds.height - 4),
+                             self.mouth)
+            if self.mouth < 5:
+                if random.uniform(0, 1) < 0.2:
+                    self.mouth += 1
+            else:
+                self.eating = False
+                self.mouth = 1
 
     def move(self, width, height):
         if random.uniform(0, 50) <= 10:
@@ -64,22 +88,22 @@ class Organism:
 
     def move_towards_target(self):
         if self.bounds.x <= self.target.bounds.x:
-            delta_x = random.uniform(0, self.speed / 2)
+            delta_x = random.uniform(self.speed / 10, self.speed / 2)
             if self.bounds.y <= self.target.bounds.y:
-                delta_y = random.uniform(0, self.speed / 2)
+                delta_y = random.uniform(self.speed / 10, self.speed / 2)
             else:
-                delta_y = random.uniform(-self.speed / 2, 0)
+                delta_y = random.uniform(-self.speed / 2, -self.speed / 10)
         else:
-            delta_x = random.uniform(-self.speed / 2, 0)
+            delta_x = random.uniform(-self.speed / 2, -self.speed / 10)
             if self.bounds.y <= self.target.bounds.y:
-                delta_y = random.uniform(0, self.speed / 2)
+                delta_y = random.uniform(self.speed / 10, self.speed / 2)
             else:
-                delta_y = random.uniform(-self.speed / 2, 0)
+                delta_y = random.uniform(-self.speed / 2, -self.speed / 10)
         return delta_x, delta_y
 
     def move_randomly(self):
-        delta_x = random.uniform(-self.speed / 2, self.speed / 2)
-        delta_y = random.uniform(-self.speed / 2, self.speed / 2)
+        delta_x = random.uniform((-self.speed / 2), self.speed / 2)
+        delta_y = random.uniform((-self.speed / 2), self.speed / 2)
         return delta_x, delta_y
 
     def get_older(self, population):
@@ -89,6 +113,15 @@ class Organism:
             self.die(population)
         elif not self.fertile and self.age >= self.lifetime / 4:
             self.fertile = True
+
+        if self.pregnant:
+            if time.time() - self.time_pregnant > self.lifetime / 10:
+                self.baby.bounds.x, self.baby.bounds.y = self.bounds.x, self.bounds.y
+                population.append(self.baby)
+                self.fertile = False
+                self.pregnant = False
+                self.baby = None
+                self.time_pregnant = 0
 
     def die(self, population):
         if self.bounds.width > 0 and random.uniform(0, 100) < 10:
@@ -113,7 +146,7 @@ class Organism:
         self.focus = (focus / total) * 100
         self.perception = (perception / total) * 100
         self.endurance = (endurance / total) * 100
-        self.lifetime = (self.strength + self.endurance) * 2
+        self.lifetime = (self.strength + self.endurance) * 3
 
     def perceive(self, population):
         self.plant_perceptions = []
@@ -131,6 +164,8 @@ class Organism:
                 self.find_mate()
             elif len(self.plant_perceptions) > 1:
                 self.find_food()
+            elif len(self.organism_perceptions) > 1:
+                self.find_herd()
 
     def act(self):
         if self.herding:
@@ -174,10 +209,13 @@ class Organism:
         if self.target is not None and self.bounds.colliderect(self.target.bounds):
             if self.sex == 'F' and not self.pregnant:
                 self.reproducing = False
-                self.fertile = None
+                self.fertile = False
                 self.reproduced = time.time()
                 if self.target.fertile and random.uniform(0, 100) < 10:
                     self.pregnant = True
+                    self.fitness += 1
+                    self.target.fitness += 1
+                    self.make_baby(self.target)
                 self.target = None
             elif self.sex == 'M':
                 self.reproducing = False
@@ -185,12 +223,36 @@ class Organism:
                 self.reproduced = time.time()
                 if self.target.fertile and random.uniform(0, 100) < 10:
                     self.target.pregnant = True
+                    self.target.fertile = False
+                    self.fitness += 1
+                    self.target.fitness += 1
+                    self.target.make_baby(self)
                 self.target = None
         elif self.target is None:
             self.reproducing = False
 
-    def make_baby(self):
-        pass
+    def make_baby(self, mate):
+        self.time_pregnant = time.time()
+        speed = self.speed + mate.speed
+        strength = self.strength + mate.strength
+        perception = self.perception + mate.perception
+        focus = self.focus + mate.focus
+        endurance = self.endurance + mate.endurance
+        total = speed + strength + perception + focus + endurance
+
+        child = Organism()
+        child.color = (((self.color[0] + mate.color[0]) / 510) * 255, ((self.color[1] + mate.color[1]) / 510) * 255,
+                       ((self.color[2] + mate.color[2]) / 510) * 255)
+        child.sex = random.choice(['M', 'F'])
+        child.speed = (speed / total) * 100
+        child.strength = (strength / total) * 100
+        child.focus = (focus / total) * 100
+        child.perception = (perception / total) * 100
+        child.endurance = (endurance / total) * 100
+        child.lifetime = (self.strength + self.endurance) * 3
+        child.parents = [self, mate]
+        child.generation = max(self.generation, mate.generation) + 1
+        self.baby = child
 
     def find_herd(self):
         if len(self.organism_perceptions) > 0:
@@ -200,7 +262,10 @@ class Organism:
             return random.choice(self.organism_perceptions)
 
     def herd(self):
-        if len(self.organism_perceptions) > 0:
+        self.herding = True
+        self.reproducing = False
+        self.foraging = False
+        if len(self.organism_perceptions) > 0 and random.uniform(0, 10) < 0.5:
             self.target = random.choice(self.organism_perceptions)
         else:
             self.target = None
