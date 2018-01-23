@@ -1,6 +1,7 @@
 import pygame
 import sys
 import random
+import time
 
 from organism import Organism
 from organism import Plant
@@ -15,7 +16,7 @@ class Simulation:
         self.population = []
         self.vegetation = []
         self.vegetation_rate = 30
-        self.population_size = 50
+        self.population_size = 30
         self.timer = 0
         self.paused = False
 
@@ -97,6 +98,9 @@ class Simulation:
         for organism in self.population:
             if organism.bounds.colliderect(plant.bounds):
                 organism.eating = True
+                organism.hungry = False
+                organism.hunger = None
+                organism.ate = time.time()
                 organism.food_eaten += 1
                 organism.lifetime += (20 / organism.food_eaten)
                 organism.endurance += (1 / organism.food_eaten)
