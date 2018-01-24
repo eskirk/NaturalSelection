@@ -15,8 +15,8 @@ class Simulation:
         self.game_over = False
         self.population = []
         self.vegetation = []
-        self.vegetation_rate = 30
-        self.population_size = 30
+        self.vegetation_rate = 40
+        self.population_size = 50
         self.timer = 0
         self.paused = False
 
@@ -67,7 +67,7 @@ class Simulation:
     def vegetate(self):
         # grow a new plant
         if random.uniform(0, 100) < 3:
-            pos = (int(random.uniform(0, Simulation.window_width - 5)), int(random.uniform(0, Simulation.window_height - 5)))
+            pos = (int(random.uniform(10, Simulation.window_width - 10)), int(random.uniform(10, Simulation.window_height - 10)))
             plant = Plant(pygame.Rect(pos[0], pos[1], 6, 6))
             self.vegetation.append(plant)
 
@@ -102,7 +102,7 @@ class Simulation:
                 organism.hunger = None
                 organism.ate = time.time()
                 organism.food_eaten += 1
-                organism.lifetime += (20 / organism.food_eaten)
+                organism.lifetime += (50 / organism.food_eaten)
                 organism.endurance += (1 / organism.food_eaten)
                 if organism.food_eaten % 5 == 0:
                     organism.bounds.inflate_ip(2, 2)

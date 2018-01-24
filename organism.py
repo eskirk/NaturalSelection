@@ -87,8 +87,16 @@ class Organism:
     # decide where the organism moves, be it towards a target or randomly
     def move(self, width, height):
         if random.uniform(0, 50) <= 10:
+            # if there is no target, move randomly
             if self.target is None:
                 delta_x, delta_y = self.move_randomly()
+            # if the organism is herding, move randomly with the herd
+            elif self.herding:
+                if self.get_dist(self.target) <= self.perception * 3:
+                    delta_x, delta_y = self.move_randomly()
+                else:
+                    delta_x, delta_y = self.move_towards_target()
+            # if the organism is not herding, move directly towards the target
             else:
                 delta_x, delta_y = self.move_towards_target()
 
@@ -327,7 +335,9 @@ class Organism:
         self.herding = True
         self.reproducing = False
         self.foraging = False
-        if len(self.organism_perceptions) > 0 and random.uniform(0, 5) < self.sociability:
+        if self.hungry:
+            self.find_food()
+        elif len(self.organism_perceptions) > 0 and random.uniform(0, 5) < self.sociability:
             self.target = random.choice(self.organism_perceptions)
         elif len(self.organism_perceptions) > 0 and self.fertile and random.uniform(0, 5) < (self.endurance / 50):
             self.find_mate()
