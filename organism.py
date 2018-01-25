@@ -147,7 +147,7 @@ class Organism:
         # control "puberty" and other age related triggers
         if self.age > self.lifetime:
             self.die(population)
-        elif not self.fertile and self.lifetime <= self.age / 4 <= self.lifetime / 3:
+        elif not self.fertile and self.age >= self.lifetime / 3:
             self.fertile = True
         elif not self.fertile and time.time() - self.reproduced > self.lifetime / (((100 - self.endurance) / 100) * 10):
             self.fertile = True

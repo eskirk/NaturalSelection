@@ -15,7 +15,7 @@ class Simulation:
         self.game_over = False
         self.population = []
         self.vegetation = []
-        self.vegetation_rate = 40
+        self.vegetation_rate = 30
         self.population_size = 50
         self.timer = 0
         self.paused = False
