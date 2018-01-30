@@ -14,7 +14,7 @@ class Organism:
         self.birth = time.time()
         self.age = 0
         self.name = 'Organism ' + str(self.color)
-        self.parents = None
+        self.parents = []
         # attributes
         self.speed = 0
         self.strength = 0
@@ -37,6 +37,7 @@ class Organism:
         self.fertile = False
         self.pregnant = False
         self.baby = None
+        self.children = []
         self.hungry = False
         self.time_pregnant = 0
         self.eating = False
@@ -58,7 +59,7 @@ class Organism:
                '\nHerding: ' + str(self.herding) + '\nReproducing: ' + str(self.reproducing) + \
                '\nForaging: ' + str(self.foraging) + '\nAge: ' + str(self.age) + \
                '\nLifetime: ' + str(self.lifetime) + '\nPerceptions: ' + str(self.plant_perceptions) + \
-               '\nTarget: ' + str(self.target.__class__) + '\nGeneration: ' + str(self.generation)
+               '\nTarget: ' + str(self.target.__class__) + '\nGeneration: ' + str(self.generation) + '\n'
 
     # draw the organism based on their bounds
     def draw(self, display):
@@ -92,7 +93,7 @@ class Organism:
                 delta_x, delta_y = self.move_randomly()
             # if the organism is herding, move randomly with the herd
             elif self.herding:
-                if self.get_dist(self.target) <= self.perception * 3:
+                if self.get_dist(self.target) <= self.perception * 8:
                     delta_x, delta_y = self.move_randomly()
                 else:
                     delta_x, delta_y = self.move_towards_target()
@@ -147,7 +148,7 @@ class Organism:
         # control "puberty" and other age related triggers
         if self.age > self.lifetime:
             self.die(population)
-        elif not self.fertile and self.age >= self.lifetime / 3:
+        elif not self.fertile and self.age >= self.lifetime / 3 and self.food_eaten > 0:
             self.fertile = True
         elif not self.fertile and time.time() - self.reproduced > self.lifetime / (((100 - self.endurance) / 100) * 10):
             self.fertile = True
@@ -165,6 +166,7 @@ class Organism:
             if time.time() - self.time_pregnant > self.lifetime / 10:
                 self.baby.bounds.x, self.baby.bounds.y = self.bounds.x, self.bounds.y
                 population.append(self.baby)
+                self.children.append(self.baby)
                 print('Birth, population: ', len(population))
                 self.fertile = False
                 self.pregnant = False
@@ -207,7 +209,7 @@ class Organism:
         self.plant_perceptions = []
         self.organism_perceptions = []
         for organism in population:
-            if self.get_dist(organism) <= self.perception * 5:
+            if self.get_dist(organism) <= self.perception * 7:
                 if organism.__class__ == Plant and organism not in self.plant_perceptions:
                     self.plant_perceptions.append(organism)
                 elif organism.__class__ == Organism and organism not in self.organism_perceptions:
@@ -266,6 +268,9 @@ class Organism:
             elif self.sex == 'F' and self.target.sex != 'M':
                 self.target = None
                 self.reproducing = False
+            if self.target in self.children or self.target in self.parents:
+                self.target = None
+                self.reproducing = False
         else:
             self.target = None
             self.reproducing = False
@@ -321,6 +326,7 @@ class Organism:
         child.parents = [self, mate]
         child.generation = max(self.generation, mate.generation) + 1
         self.baby = child
+        mate.children.append(self.baby)
 
     # find other organisms to herd with
     def find_herd(self):
@@ -363,3 +369,72 @@ class Plant:
 
     def draw(self, display):
         pygame.draw.ellipse(display, (0, 225, 20), self.bounds)
+
+
+class Predator(Organism):
+    def __init__(self, x_pos=None, y_pos=None):
+        Organism.__init__(self)
+        if x_pos is not None and y_pos is not None:
+            self.bounds = pygame.Rect(x_pos, y_pos, 50, 50)
+            self.center = (x_pos, y_pos)
+        else:
+            self.bounds = pygame.Rect(random.uniform(20, 780), random.uniform(20, 780), 50, 50)
+        self.color = (random.uniform(0, 255), random.uniform(0, 255), random.uniform(0, 255))
+        self.birth = time.time()
+        self.age = 0
+        self.name = 'Predator ' + str(self.color)
+        self.parents = []
+        # attributes
+        self.speed = 0
+        self.strength = 0
+        self.focus = 0
+        self.perception = 0
+        self.endurance = 0
+        self.sociability = 0
+        self.survivability = 0
+        self.sex = None
+        # stats
+        self.food_eaten = 0
+        self.lifetime = 0
+        self.focus_time = 0
+        self.fitness = 0
+        self.generation = 0
+        # status
+        self.foraging = False
+        self.reproducing = False
+        self.herding = False
+        self.fertile = False
+        self.pregnant = False
+        self.baby = None
+        self.children = []
+        self.hungry = False
+        self.time_pregnant = 0
+        self.eating = False
+        self.target = None
+        self.mouth = 0
+        self.reproduced = time.time()
+        self.ate = time.time()
+        self.hunger = None
+        # perceptions
+        self.plant_perceptions = []
+        self.organism_perceptions = []
+        self.randomize()
+
+    def draw(self, display):
+        pygame.draw.circle(display, (0, 0, 0), self.center, int(self.bounds.width / 2), 0)
+
+        pygame.draw.circle(display, (255, 255, 255), self.center, 3)
+        pygame.draw.circle(display, (255, 255, 255), self.center, 3)
+        pygame.draw.circle(display, (0, 0, 0), (self.bounds.x + self.bounds.width + 6, self.bounds.y), 1)
+        pygame.draw.circle(display, (0, 0, 0), (int(self.bounds.x + self.bounds.width - 6), self.bounds.y), 1)
+
+        # if the organism is eating, draw the mouth but make it eat :^)
+        if self.eating:
+            pygame.draw.circle(display, (0, 0, 0), (int(self.bounds.x + self.bounds.width), self.bounds.y),
+                               int(self.bounds.width / 4), self.mouth)
+            if self.mouth < 5:
+                if random.uniform(0, 1) < 0.2:
+                    self.mouth += 1
+            else:
+                self.eating = False
+                self.mouth = 1

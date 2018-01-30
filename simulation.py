@@ -4,6 +4,7 @@ import random
 import time
 
 from organism import Organism
+from organism import Predator
 from organism import Plant
 
 
@@ -15,7 +16,7 @@ class Simulation:
         self.game_over = False
         self.population = []
         self.vegetation = []
-        self.vegetation_rate = 30
+        self.vegetation_rate = 50
         self.population_size = 50
         self.timer = 0
         self.paused = False
@@ -35,19 +36,7 @@ class Simulation:
             # listen for events
             keys = pygame.key.get_pressed()
             for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    sys.exit()
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    pos = pygame.mouse.get_pos()
-                    result = self.get_organism(pos)
-                    if result is not None:
-                        print(result)
-                    else:
-                        new_organism = Organism(pos[0], pos[1])
-                        new_organism.randomize()
-                        self.population.append(new_organism)
-                elif keys[pygame.K_SPACE]:
-                    self.paused = not self.paused
+                self.listen(event, keys)
 
             if not self.paused:
                 self.tick()
@@ -55,6 +44,34 @@ class Simulation:
             self.draw(display)
 
             pygame.display.flip()
+
+    def listen(self, event, keys):
+        # quit the game
+        if event.type == pygame.QUIT:
+            sys.exit()
+        # add something to the environment
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            self.click(keys)
+        elif keys[pygame.K_SPACE]:
+            self.paused = not self.paused
+
+    def click(self, keys):
+        pos = pygame.mouse.get_pos()
+        result = self.get_organism(pos)
+        # print the contents of the location
+        if result is not None:
+            print(result)
+        else:
+            if keys[pygame.K_o]:
+                new_organism = Organism(pos[0], pos[1])
+                new_organism.randomize()
+                self.population.append(new_organism)
+            elif keys[pygame.K_f]:
+                new_plant = Plant(pygame.Rect(pos[0], pos[1], 6, 6))
+                self.vegetation.append(new_plant)
+            # elif keys[pygame.K_p]:
+            #     new_predator = Predator(pos[0], pos[1])
+            #     self.population.append(new_predator)
 
     def tick(self):
         for organism in self.population:
