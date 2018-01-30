@@ -69,9 +69,9 @@ class Simulation:
             elif keys[pygame.K_f]:
                 new_plant = Plant(pygame.Rect(pos[0], pos[1], 6, 6))
                 self.vegetation.append(new_plant)
-            # elif keys[pygame.K_p]:
-            #     new_predator = Predator(pos[0], pos[1])
-            #     self.population.append(new_predator)
+            elif keys[pygame.K_p]:
+                new_predator = Predator(pos[0], pos[1])
+                self.population.append(new_predator)
 
     def tick(self):
         for organism in self.population:

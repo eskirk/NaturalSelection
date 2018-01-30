@@ -8,8 +8,12 @@ class Organism:
     def __init__(self, x_pos=None, y_pos=None):
         if x_pos is not None and y_pos is not None:
             self.bounds = pygame.Rect(x_pos, y_pos, 15, 15)
+            self.center = (x_pos, y_pos)
         else:
-            self.bounds = pygame.Rect(random.uniform(20, 780), random.uniform(20, 780), 15, 15)
+            x_pos = random.uniform(20, 780)
+            y_pos = random.uniform(20, 780)
+            self.bounds = pygame.Rect(x_pos, y_pos, 15, 15)
+            self.center = (x_pos, y_pos)
         self.color = (random.uniform(0, 255), random.uniform(0, 255), random.uniform(0, 255))
         self.birth = time.time()
         self.age = 0
@@ -101,9 +105,10 @@ class Organism:
             else:
                 delta_x, delta_y = self.move_towards_target()
 
-            if self.bounds.width < (self.bounds.x + self.bounds.width) + delta_x < width \
-                    and self.bounds.height < (self.bounds.y + self.bounds.height) + delta_y < height:
+            if self.bounds.width < self.center[0] + delta_x < width \
+                    and self.bounds.height < self.center[1] + delta_y < height:
                 self.bounds = self.bounds.move((delta_x, delta_y))
+                self.center = (self.center[0] + delta_x, self.center[1] + delta_y)
 
     # once a target has been chosen, move towards it with a distance correlated to the organisms speed
     def move_towards_target(self):
@@ -365,6 +370,7 @@ class Organism:
 class Plant:
     def __init__(self, bounds):
         self.bounds = bounds
+        self.center = (self.bounds.x, self.bounds.y)
         self.name = 'Plant'
 
     def draw(self, display):
@@ -375,10 +381,10 @@ class Predator(Organism):
     def __init__(self, x_pos=None, y_pos=None):
         Organism.__init__(self)
         if x_pos is not None and y_pos is not None:
-            self.bounds = pygame.Rect(x_pos, y_pos, 50, 50)
+            self.bounds = pygame.Rect(x_pos, y_pos, 25, 25)
             self.center = (x_pos, y_pos)
         else:
-            self.bounds = pygame.Rect(random.uniform(20, 780), random.uniform(20, 780), 50, 50)
+            self.bounds = pygame.Rect(random.uniform(20, 780), random.uniform(20, 780), 25, 25)
         self.color = (random.uniform(0, 255), random.uniform(0, 255), random.uniform(0, 255))
         self.birth = time.time()
         self.age = 0
@@ -421,20 +427,44 @@ class Predator(Organism):
         self.randomize()
 
     def draw(self, display):
-        pygame.draw.circle(display, (0, 0, 0), self.center, int(self.bounds.width / 2), 0)
+        pygame.draw.circle(display, self.color, self.center, int(self.bounds.width / 2), 0)
 
-        pygame.draw.circle(display, (255, 255, 255), self.center, 3)
-        pygame.draw.circle(display, (255, 255, 255), self.center, 3)
-        pygame.draw.circle(display, (0, 0, 0), (self.bounds.x + self.bounds.width + 6, self.bounds.y), 1)
-        pygame.draw.circle(display, (0, 0, 0), (int(self.bounds.x + self.bounds.width - 6), self.bounds.y), 1)
+        pygame.draw.circle(display, (255, 255, 255), (self.center[0] - 5, self.center[1]), 3)
+        pygame.draw.circle(display, (255, 255, 255), (self.center[0] + 5, self.center[1]), 3)
+        pygame.draw.circle(display, (0, 0, 0), (self.center[0] - 5, self.center[1]), 1)
+        pygame.draw.circle(display, (0, 0, 0), (self.center[0] + 5, self.center[1]), 1)
 
         # if the organism is eating, draw the mouth but make it eat :^)
         if self.eating:
-            pygame.draw.circle(display, (0, 0, 0), (int(self.bounds.x + self.bounds.width), self.bounds.y),
-                               int(self.bounds.width / 4), self.mouth)
+            pygame.draw.circle(display, (255, 255, 255), (self.center[0], self.center[1] + 5), self.mouth)
             if self.mouth < 5:
                 if random.uniform(0, 1) < 0.2:
                     self.mouth += 1
             else:
                 self.eating = False
                 self.mouth = 1
+
+        # decide where the organism moves, be it towards a target or randomly
+    def move(self, width, height):
+        if random.uniform(0, 50) <= 10:
+            # if there is no target, move randomly
+            if self.target is None:
+                delta_x, delta_y = self.move_randomly()
+                print(delta_x, delta_y)
+            # if the organism is herding, move randomly with the herd
+            elif self.herding:
+                if self.get_dist(self.target) <= self.perception * 8:
+                    delta_x, delta_y = self.move_randomly()
+                else:
+                    delta_x, delta_y = self.move_towards_target()
+            # if the organism is not herding, move directly towards the target
+            else:
+                delta_x, delta_y = self.move_towards_target()
+
+            if self.bounds.width < self.center[0] + delta_x < width \
+                    and self.bounds.height < self.center[1] + delta_y < height:
+                self.center = (int(self.center[0] + delta_x), int(self.center[1] + delta_y))
+
+    def get_dist(self, other):
+        return math.sqrt((other.center[0] - self.center[0])**2 +
+                         (other.center[1] - self.center[1])**2)
