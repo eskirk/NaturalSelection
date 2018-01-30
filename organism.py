@@ -112,29 +112,29 @@ class Organism:
 
     # once a target has been chosen, move towards it with a distance correlated to the organisms speed
     def move_towards_target(self):
-        if self.bounds.x < self.target.bounds.x:
+        if self.center[0] < self.target.center[0]:
             delta_x = random.uniform(self.speed / 10, self.speed / 2)
-            if self.bounds.y < self.target.bounds.y:
+            if self.center[1] < self.target.center[1]:
                 delta_y = random.uniform(self.speed / 10, self.speed / 2)
-            elif self.bounds.y > self.target.bounds.y:
+            elif self.center[1] > self.target.center[1]:
                 delta_y = random.uniform(-self.speed / 2, -self.speed / 10)
             else:
                 delta_y = 0
-        elif self.bounds.x > self.target.bounds.x:
+        elif self.center[0] > self.target.center[0]:
             delta_x = random.uniform(-self.speed / 2, -self.speed / 10)
-            if self.bounds.y < self.target.bounds.y:
+            if self.center[1] < self.target.center[1]:
                 delta_y = random.uniform(self.speed / 10, self.speed / 2)
-            elif self.bounds.y > self.target.bounds.y:
+            elif self.center[1] > self.target.center[1]:
                 delta_y = random.uniform(-self.speed / 2, -self.speed / 10)
             else:
                 delta_y = 0
-        elif self.bounds.x == self.target.bounds.x and self.bounds.y == self.target.bounds.y:
+        elif self.center[0] == self.target.center[0] and self.center[1] == self.target.center[1]:
             delta_x, delta_y = self.move_randomly()
         else:
             delta_x = 0
-            if self.bounds.y < self.target.bounds.y:
+            if self.center[1] < self.target.center[1]:
                 delta_y = random.uniform(self.speed / 10, self.speed / 2)
-            elif self.bounds.y > self.target.bounds.y:
+            elif self.center[1] > self.target.center[1]:
                 delta_y = random.uniform(-self.speed / 2, -self.speed / 10)
             else:
                 delta_y = 0
@@ -339,7 +339,9 @@ class Organism:
             self.herding = True
             self.reproducing = False
             self.foraging = False
-            return random.choice(self.organism_perceptions)
+            target = random.choice(self.organism_perceptions)
+            if target.__class__ == self.__class__:
+                return target
 
     # herd with the herd target
     def herd(self):
@@ -384,7 +386,10 @@ class Predator(Organism):
             self.bounds = pygame.Rect(x_pos, y_pos, 25, 25)
             self.center = (x_pos, y_pos)
         else:
-            self.bounds = pygame.Rect(random.uniform(20, 780), random.uniform(20, 780), 25, 25)
+            x_pos = int(random.uniform(20, 780))
+            y_pos = int(random.uniform(20, 780))
+            self.bounds = pygame.Rect(x_pos, y_pos, 25, 25)
+            self.center = (x_pos, y_pos)
         self.color = (random.uniform(0, 255), random.uniform(0, 255), random.uniform(0, 255))
         self.birth = time.time()
         self.age = 0
@@ -424,25 +429,27 @@ class Predator(Organism):
         # perceptions
         self.plant_perceptions = []
         self.organism_perceptions = []
-        self.randomize()
 
     def draw(self, display):
         pygame.draw.circle(display, self.color, self.center, int(self.bounds.width / 2), 0)
 
-        pygame.draw.circle(display, (255, 255, 255), (self.center[0] - 5, self.center[1]), 3)
-        pygame.draw.circle(display, (255, 255, 255), (self.center[0] + 5, self.center[1]), 3)
-        pygame.draw.circle(display, (0, 0, 0), (self.center[0] - 5, self.center[1]), 1)
-        pygame.draw.circle(display, (0, 0, 0), (self.center[0] + 5, self.center[1]), 1)
+        pygame.draw.circle(display, (255, 255, 255), (self.center[0] - 7, self.center[1] - 5), 3)
+        pygame.draw.circle(display, (255, 255, 255), (self.center[0] + 7, self.center[1] - 5), 3)
+        pygame.draw.circle(display, (0, 0, 0), (self.center[0] - 7, self.center[1] - 5), 1)
+        pygame.draw.circle(display, (0, 0, 0), (self.center[0] + 7, self.center[1] - 5), 1)
 
         # if the organism is eating, draw the mouth but make it eat :^)
         if self.eating:
             pygame.draw.circle(display, (255, 255, 255), (self.center[0], self.center[1] + 5), self.mouth)
-            if self.mouth < 5:
+            if self.mouth < int(self.bounds.width / 4):
                 if random.uniform(0, 1) < 0.2:
                     self.mouth += 1
             else:
                 self.eating = False
                 self.mouth = 1
+        else:
+            pygame.draw.line(display, (255, 255, 255), (self.center[0] - 5, self.center[1] + 5),
+                             (self.center[0] + 5, self.center[1] + 5), 1)
 
         # decide where the organism moves, be it towards a target or randomly
     def move(self, width, height):
@@ -450,7 +457,6 @@ class Predator(Organism):
             # if there is no target, move randomly
             if self.target is None:
                 delta_x, delta_y = self.move_randomly()
-                print(delta_x, delta_y)
             # if the organism is herding, move randomly with the herd
             elif self.herding:
                 if self.get_dist(self.target) <= self.perception * 8:

@@ -18,6 +18,7 @@ class Simulation:
         self.vegetation = []
         self.vegetation_rate = 50
         self.population_size = 50
+        self.predator_chance = 0.05
         self.timer = 0
         self.paused = False
 
@@ -71,6 +72,7 @@ class Simulation:
                 self.vegetation.append(new_plant)
             elif keys[pygame.K_p]:
                 new_predator = Predator(pos[0], pos[1])
+                new_predator.randomize()
                 self.population.append(new_predator)
 
     def tick(self):
@@ -90,7 +92,7 @@ class Simulation:
 
         # check whether or not the plant was eaten and grow over time
         for plant in self.vegetation:
-            eaten = self.eat_plant(plant)
+            eaten = self.eat_plants(plant)
             if not eaten:
                 if plant.bounds.width < 10 and random.uniform(0, 100) < 1:
                     plant.bounds.width += 1
@@ -102,18 +104,23 @@ class Simulation:
 
     def populate(self):
         for i in range(self.population_size):
-            organism = Organism()
-            organism.randomize()
-            self.population.append(organism)
+            if random.uniform(0, 1) > self.predator_chance:
+                organism = Organism()
+                organism.randomize()
+                self.population.append(organism)
+            else:
+                predator = Predator()
+                predator.randomize()
+                self.population.append(predator)
 
     def get_organism(self, pos):
         for organism in self.population:
             if organism.bounds.collidepoint(pos):
                 return organism
 
-    def eat_plant(self, plant):
+    def eat_plants(self, plant):
         for organism in self.population:
-            if organism.bounds.colliderect(plant.bounds):
+            if organism.get_dist(plant) < organism.bounds.width / 2 or organism.bounds.colliderect(plant.bounds):
                 organism.eating = True
                 organism.hungry = False
                 organism.hunger = None
@@ -122,7 +129,10 @@ class Simulation:
                 organism.lifetime += (50 / organism.food_eaten)
                 organism.endurance += (1 / organism.food_eaten)
                 if organism.food_eaten % 5 == 0:
-                    organism.bounds.inflate_ip(2, 2)
+                    if organism.__class__ == Organism:
+                        organism.bounds.inflate_ip(2, 2)
+                    elif organism.__class__ == Predator:
+                        organism.bounds.width += 2
                 self.vegetation.remove(plant)
                 organism.target = None
                 return True
