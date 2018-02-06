@@ -3,13 +3,12 @@ import sys
 import random
 import time
 
-from organism import Organism
-from organism import Predator
-from organism import Plant
+from organism import Organism, Predator
+from plant import Plant
 
 
 class Simulation:
-    window_width = 800
+    window_width = 1000
     window_height = 800
 
     def __init__(self):
@@ -17,8 +16,8 @@ class Simulation:
         self.population = []
         self.vegetation = []
         self.vegetation_rate = 10
-        self.population_size = 75
-        self.predator_chance = 0.02
+        self.population_size = 100
+        self.predator_chance = 0.05
         self.timer = 0
         self.paused = False
 
@@ -92,7 +91,7 @@ class Simulation:
 
         # check whether or not the plant was eaten and grow over time
         for plant in self.vegetation:
-            eaten = self.eat_plants(plant)
+            eaten = self.eat(plant)
             if not eaten:
                 if plant.bounds.width < 10 and random.uniform(0, 100) < 1:
                     plant.bounds.width += 1
@@ -120,7 +119,7 @@ class Simulation:
             elif organism.__class__ == Predator and organism.bounds.colliderect(pygame.Rect(pos[0], pos[1], 20, 20)):
                 return organism
 
-    def eat_plants(self, plant):
+    def eat(self, plant):
         for organism in self.population:
             if organism.__class__ == Organism and organism.get_dist(plant) < organism.bounds.width / 2 or \
                     organism.bounds.colliderect(plant.bounds):
@@ -145,7 +144,7 @@ class Simulation:
                 organism.lifetime += (100 / organism.food_eaten)
                 organism.endurance += (1 / organism.food_eaten)
                 if organism.food_eaten % 10 == 0:
-                    organism.bounds.width += 1
+                    organism.bounds.width += 2
                 if organism.prey in self.population:
                     self.population.remove(organism.prey)
                 print('Predation, population: ', len(self.population))
