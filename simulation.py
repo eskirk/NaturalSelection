@@ -16,9 +16,9 @@ class Simulation:
         self.game_over = False
         self.population = []
         self.vegetation = []
-        self.vegetation_rate = 85
+        self.vegetation_rate = 10
         self.population_size = 75
-        self.predator_chance = 0.05
+        self.predator_chance = 0.02
         self.timer = 0
         self.paused = False
 
@@ -85,7 +85,7 @@ class Simulation:
 
     def vegetate(self):
         # grow a new plant
-        if random.uniform(0, 100) < 3:
+        if random.uniform(0, 100) < self.vegetation_rate:
             pos = (int(random.uniform(10, Simulation.window_width - 10)), int(random.uniform(10, Simulation.window_height - 10)))
             plant = Plant(pygame.Rect(pos[0], pos[1], 6, 6))
             self.vegetation.append(plant)
@@ -136,7 +136,7 @@ class Simulation:
                 self.vegetation.remove(plant)
                 organism.target = None
                 return True
-            elif organism.__class__ == Predator and organism.prey and organism.can_eat(organism.prey):
+            elif organism.__class__ == Predator and organism.prey is not None and organism.can_eat(organism.prey):
                 organism.eating = True
                 organism.hungry = False
                 organism.hunger = None
@@ -144,7 +144,7 @@ class Simulation:
                 organism.food_eaten += 1
                 organism.lifetime += (100 / organism.food_eaten)
                 organism.endurance += (1 / organism.food_eaten)
-                if organism.food_eaten % 5 == 0:
+                if organism.food_eaten % 10 == 0:
                     organism.bounds.width += 1
                 if organism.prey in self.population:
                     self.population.remove(organism.prey)

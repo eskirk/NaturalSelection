@@ -281,8 +281,6 @@ class Organism:
             self.herd()
         elif self.reproducing and self.fertile:
             self.mate()
-        elif self.foraging:
-            self.find_food()
 
     # choose a food target
     def find_food(self):
@@ -326,6 +324,8 @@ class Organism:
     # run from predators
     def flee(self):
         self.predator = random.choice(self.predator_perceptions)
+        if self.predator.bounds.width < self.bounds.width:
+            self.predator = None
 
     # attempt to mate with the mate target
     def mate(self):
@@ -552,7 +552,8 @@ class Predator(Organism):
             self.target = None
 
     def can_eat(self, target):
-        if self.get_dist(target) < self.bounds.width / 4 and self.bounds.width > target.bounds.width:
+        if not target.herding and self.get_dist(target) < self.bounds.width / 4 and \
+                self.bounds.width > target.bounds.width:
             return True
         return False
 
