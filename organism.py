@@ -46,6 +46,7 @@ class Organism:
         self.time_pregnant = 0
         self.eating = False
         self.target = None
+        self.predator = None
         self.mouth = 0
         self.reproduced = time.time()
         self.ate = time.time()
@@ -53,6 +54,7 @@ class Organism:
         # perceptions
         self.plant_perceptions = []
         self.organism_perceptions = []
+        self.predator_perceptions = []
 
     def __repr__(self):
         return '\nSpeed: ' + str(self.speed) + '\nStrength: ' + str(self.strength) + \
@@ -92,8 +94,12 @@ class Organism:
     # decide where the organism moves, be it towards a target or randomly
     def move(self, width, height):
         if random.uniform(0, 50) <= 10:
+            # if there are predators nearby
+            if len(self.predator_perceptions) > 1 and random.uniform(0, 3) < self.survivability:
+                self.flee()
+                delta_x, delta_y = self.run_from_predator()
             # if there is no target, move randomly
-            if self.target is None:
+            elif self.target is None:
                 delta_x, delta_y = self.move_randomly()
             # if the organism is herding, move randomly with the herd
             elif self.herding:
@@ -139,6 +145,36 @@ class Organism:
             else:
                 delta_y = 0
         return delta_x, delta_y
+
+    # once a target has been chosen, move towards it with a distance correlated to the organisms speed
+    def run_from_predator(self):
+        if self.center[0] < self.predator.center[0]:
+            delta_x = random.uniform(self.speed / 10, self.speed / 2)
+            if self.center[1] < self.predator.center[1]:
+                delta_y = random.uniform(self.speed / 10, self.speed / 2)
+            elif self.center[1] > self.predator.center[1]:
+                delta_y = random.uniform(-self.speed / 2, -self.speed / 10)
+            else:
+                delta_y = 0
+        elif self.center[0] > self.predator.center[0]:
+            delta_x = random.uniform(-self.speed / 2, -self.speed / 10)
+            if self.center[1] < self.predator.center[1]:
+                delta_y = random.uniform(self.speed / 10, self.speed / 2)
+            elif self.center[1] > self.predator.center[1]:
+                delta_y = random.uniform(-self.speed / 2, -self.speed / 10)
+            else:
+                delta_y = 0
+        elif self.center[0] == self.predator.center[0] and self.center[1] == self.predator.center[1]:
+            delta_x, delta_y = self.move_randomly()
+        else:
+            delta_x = 0
+            if self.center[1] < self.predator.center[1]:
+                delta_y = random.uniform(self.speed / 10, self.speed / 2)
+            elif self.center[1] > self.predator.center[1]:
+                delta_y = random.uniform(-self.speed / 2, -self.speed / 10)
+            else:
+                delta_y = 0
+        return -delta_x, -delta_y
 
     # move in a random direction with a distance correlated to the organisms speed
     def move_randomly(self):
@@ -219,19 +255,22 @@ class Organism:
                     self.plant_perceptions.append(organism)
                 elif organism.__class__ == Organism and organism not in self.organism_perceptions:
                     self.organism_perceptions.append(organism)
+                elif organism.__class__ == Predator and organism not in self.predator_perceptions:
+                    self.predator_perceptions.append(organism)
 
     # make an action decision based on the organism's perceptions
     def decide(self):
         if self.target is None or time.time() - self.focus_time > self.focus:
+            # self.reset_status()
             # if fertile and endurance is high enough
             if self.fertile and not self.pregnant and random.uniform(0, 50) < self.endurance:
                 self.find_mate()
             # if hungry and there is food around OR if survivability is high enough
-            elif (self.hungry and len(self.plant_perceptions) > 1) or \
-                 (len(self.plant_perceptions) > 1 and random.uniform(0, 5) < self.survivability):
+            elif (self.hungry and len(self.plant_perceptions) > 0) or \
+                 (len(self.plant_perceptions) > 0 and random.uniform(0, 5) < self.survivability):
                 self.find_food()
             # if there are friends around the sociability is high enough
-            elif len(self.organism_perceptions) > 1 and random.uniform(0, 5) < self.sociability:
+            elif len(self.organism_perceptions) > 0 and random.uniform(0, 5) < self.sociability:
                 self.find_herd()
             else:
                 self.target = None
@@ -243,7 +282,7 @@ class Organism:
         elif self.reproducing and self.fertile:
             self.mate()
         elif self.foraging:
-            pass
+            self.find_food()
 
     # choose a food target
     def find_food(self):
@@ -273,12 +312,20 @@ class Organism:
             elif self.sex == 'F' and self.target.sex != 'M':
                 self.target = None
                 self.reproducing = False
-            if self.target in self.children or self.target in self.parents:
+            if self.target in self.children or self.target in self.parents or\
+                    self.target.__class__ != self.__class__:
+                self.target = None
+                self.reproducing = False
+
                 self.target = None
                 self.reproducing = False
         else:
             self.target = None
             self.reproducing = False
+
+    # run from predators
+    def flee(self):
+        self.predator = random.choice(self.predator_perceptions)
 
     # attempt to mate with the mate target
     def mate(self):
@@ -341,7 +388,9 @@ class Organism:
             self.foraging = False
             target = random.choice(self.organism_perceptions)
             if target.__class__ == self.__class__:
-                return target
+                self.target = target
+            else:
+                self.target = None
 
     # herd with the herd target
     def herd(self):
@@ -422,6 +471,7 @@ class Predator(Organism):
         self.time_pregnant = 0
         self.eating = False
         self.target = None
+        self.prey = None
         self.mouth = 0
         self.reproduced = time.time()
         self.ate = time.time()
@@ -429,6 +479,7 @@ class Predator(Organism):
         # perceptions
         self.plant_perceptions = []
         self.organism_perceptions = []
+        self.prey_perceptions = []
 
     def draw(self, display):
         pygame.draw.circle(display, self.color, self.center, int(self.bounds.width / 2), 0)
@@ -451,7 +502,7 @@ class Predator(Organism):
             pygame.draw.line(display, (255, 255, 255), (self.center[0] - 5, self.center[1] + 5),
                              (self.center[0] + 5, self.center[1] + 5), 1)
 
-        # decide where the organism moves, be it towards a target or randomly
+    # decide where the organism moves, be it towards a target or randomly
     def move(self, width, height):
         if random.uniform(0, 50) <= 10:
             # if there is no target, move randomly
@@ -471,6 +522,72 @@ class Predator(Organism):
                     and self.bounds.height < self.center[1] + delta_y < height:
                 self.center = (int(self.center[0] + delta_x), int(self.center[1] + delta_y))
 
+    # perceive the world around the organism
+    def perceive(self, population):
+        self.plant_perceptions = []
+        self.organism_perceptions = []
+        self.prey_perceptions = []
+        for organism in population:
+            if self.get_dist(organism) <= self.perception * 7:
+                if organism.__class__ == Plant and organism not in self.plant_perceptions:
+                    self.plant_perceptions.append(organism)
+                elif organism.__class__ == Predator and organism not in self.organism_perceptions:
+                    self.organism_perceptions.append(organism)
+                elif organism.__class__ == Organism and organism not in self.prey_perceptions:
+                    self.prey_perceptions.append(organism)
+
+    # choose a food target
+    def find_food(self):
+        if len(self.prey_perceptions) > 0:
+            self.foraging = True
+            self.reproducing = False
+            self.herding = False
+            self.focus_time = time.time()
+            self.target = random.choice(self.prey_perceptions)
+            self.prey = self.target
+        else:
+            self.foraging = False
+            self.reproducing = False
+            self.herding = False
+            self.target = None
+
+    def can_eat(self, target):
+        if self.get_dist(target) < self.bounds.width / 4 and self.bounds.width > target.bounds.width:
+            return True
+        return False
+
     def get_dist(self, other):
         return math.sqrt((other.center[0] - self.center[0])**2 +
                          (other.center[1] - self.center[1])**2)
+
+    # with every game tick, make the organism get older
+    def get_older(self, population):
+        self.age = time.time() - self.birth
+
+        # control "puberty" and other age related triggers
+        if self.age > self.lifetime:
+            self.die(population)
+        elif not self.fertile and self.age >= self.lifetime / 3 and self.food_eaten > 0:
+            self.fertile = True
+        elif not self.fertile and time.time() - self.reproduced > self.lifetime / (((100 - self.endurance) / 100) * 10):
+            self.fertile = True
+
+        # causes the organism to become hungry after a certain time threshold
+        if not self.hungry and time.time() - self.ate >= (self.age / 4 + self.endurance):
+            self.hungry = True
+            self.hunger = time.time()
+        # if the organism goes too long without eating, start to die
+        if self.hungry and time.time() - self.hunger >= (self.age / 4 + self.endurance):
+            self.die(population)
+
+        # start cooking up a baby
+        if self.pregnant:
+            if time.time() - self.time_pregnant > self.lifetime / 10:
+                self.baby.bounds.x, self.baby.bounds.y = self.bounds.x, self.bounds.y
+                population.append(self.baby)
+                self.children.append(self.baby)
+                print('Birth, population: ', len(population))
+                self.fertile = False
+                self.pregnant = False
+                self.baby = None
+                self.time_pregnant = 0

@@ -16,8 +16,8 @@ class Simulation:
         self.game_over = False
         self.population = []
         self.vegetation = []
-        self.vegetation_rate = 50
-        self.population_size = 50
+        self.vegetation_rate = 85
+        self.population_size = 75
         self.predator_chance = 0.05
         self.timer = 0
         self.paused = False
@@ -115,12 +115,15 @@ class Simulation:
 
     def get_organism(self, pos):
         for organism in self.population:
-            if organism.bounds.collidepoint(pos):
+            if organism.__class__ == Organism and organism.bounds.collidepoint(pos):
+                return organism
+            elif organism.__class__ == Predator and organism.bounds.colliderect(pygame.Rect(pos[0], pos[1], 20, 20)):
                 return organism
 
     def eat_plants(self, plant):
         for organism in self.population:
-            if organism.get_dist(plant) < organism.bounds.width / 2 or organism.bounds.colliderect(plant.bounds):
+            if organism.__class__ == Organism and organism.get_dist(plant) < organism.bounds.width / 2 or \
+                    organism.bounds.colliderect(plant.bounds):
                 organism.eating = True
                 organism.hungry = False
                 organism.hunger = None
@@ -129,16 +132,25 @@ class Simulation:
                 organism.lifetime += (50 / organism.food_eaten)
                 organism.endurance += (1 / organism.food_eaten)
                 if organism.food_eaten % 5 == 0:
-                    if organism.__class__ == Organism:
-                        organism.bounds.inflate_ip(2, 2)
-                    elif organism.__class__ == Predator:
-                        organism.bounds.width += 2
+                    organism.bounds.inflate_ip(2, 2)
                 self.vegetation.remove(plant)
                 organism.target = None
                 return True
-
-    def eat_prey(self, prey):
-        pass
+            elif organism.__class__ == Predator and organism.prey and organism.can_eat(organism.prey):
+                organism.eating = True
+                organism.hungry = False
+                organism.hunger = None
+                organism.ate = time.time()
+                organism.food_eaten += 1
+                organism.lifetime += (100 / organism.food_eaten)
+                organism.endurance += (1 / organism.food_eaten)
+                if organism.food_eaten % 5 == 0:
+                    organism.bounds.width += 1
+                if organism.prey in self.population:
+                    self.population.remove(organism.prey)
+                print('Predation, population: ', len(self.population))
+                organism.target, organism.prey = None, None
+                return True
 
 
 if __name__ == '__main__':
